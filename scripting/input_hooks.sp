@@ -1,6 +1,6 @@
 /*
 *	Input Hooks - DevTools
-*	Copyright (C) 2021 Silvers
+*	Copyright (C) 2022 Silvers
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 
 
-#define PLUGIN_VERSION 		"1.6"
+#define PLUGIN_VERSION 		"1.7"
 
 /*=======================================================================================
 	Plugin Info:
@@ -31,6 +31,10 @@
 
 ========================================================================================
 	Change Log:
+
+1.7 (10-Apr-2022)
+	- Added support for the "Pirates, Vikings and Knights II" game. GameData updated. Thanks to "Marttt" for the offsets.
+	- Fixed crash when retrieving Color255 values. Thanks to "Ilusion9" for reporting and "domino_" for helping fix.
 
 1.6 (20-May-2021)
 	- Fixed using a static list for reading values instead of strings. Thanks to "bottiger" for fixing.
@@ -340,12 +344,17 @@ public MRESReturn AcceptInput(int pThis, Handle hReturn, Handle hParams)
 	static char command[128];
 	DHookGetParamString(hParams, 1, command, sizeof(command));
 
-	// if( strcmp(command, "InValue") == 0 || strcmp(command, "SetTotalItems") == 0 )
 	int type = DHookGetParamObjectPtrVar(hParams, 4, 16, ObjectValueType_Int);
+
 	if( type == 5 )
 	{
 		int t = DHookGetParamObjectPtrVar(hParams, 4, 0, ObjectValueType_Int);
 		IntToString(t, param, sizeof(param));
+	}
+	else if( type == 9 )
+	{
+		int color = DHookGetParamObjectPtrVar(hParams, 4, 0, ObjectValueType_Int);
+		Format(param, sizeof(param), "%d %d %d %d", color & 0xFF, (color >> 8 ) & 0xFF, (color >> 16) & 0xFF, (color >> 24) & 0xFF);
 	}
 	else
 	{
@@ -387,7 +396,6 @@ public MRESReturn AcceptInput(int pThis, Handle hReturn, Handle hParams)
 	}
 
 	// Print
-	// int type = DHookGetParamObjectPtrVar(hParams, 4, 16, ObjectValueType_Int); // USE_TYPE[type]
 	for( int i = 0; i <= MaxClients; i++ )
 	{
 		if( g_bWatch[i] )

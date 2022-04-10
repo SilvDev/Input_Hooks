@@ -48,4 +48,16 @@
 			}
 		}
 	}
+
+	"pvkii"
+	{
+		"Offsets"
+		{
+			"AcceptInput"
+			{
+				"windows"    "38"
+				"linux"        "39"
+			}
+		}
+	}
 }
