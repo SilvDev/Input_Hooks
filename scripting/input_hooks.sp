@@ -18,7 +18,7 @@
 
 
 
-#define PLUGIN_VERSION 		"1.7"
+#define PLUGIN_VERSION 		"1.8"
 
 /*=======================================================================================
 	Plugin Info:
@@ -31,6 +31,9 @@
 
 ========================================================================================
 	Change Log:
+
+1.8 (29-Apr-2022)
+	- Added support for various types. Thanks to "Ilusion9" for coding.
 
 1.7 (10-Apr-2022)
 	- Added support for the "Pirates, Vikings and Knights II" game. GameData updated. Thanks to "Marttt" for the offsets.
@@ -88,13 +91,42 @@ bool g_bWatch[MAXPLAYERS+1];
 int g_iHookID[MAX_ENTS], g_iInputHookID[MAX_ENTS], g_iListenInput, g_iCvarLogging;
 File g_hLogFile;
 
-// char USE_TYPE[][] =
-// {
-	// "USE_OFF",
-	// "USE_ON",
-	// "USE_SET",
-	// "USE_TOG"
-// };
+enum fieldtype_t
+{
+	FIELD_VOID = 0,
+	FIELD_FLOAT = 1,
+	FIELD_STRING = 2,
+	FIELD_VECTOR = 3,
+	FIELD_INTEGER = 5,
+	FIELD_BOOLEAN = 6,
+	FIELD_SHORT = 7,
+	FIELD_CHARACTER = 8,
+	FIELD_COLOR32 = 9,
+	FIELD_CLASSPTR = 12,
+	FIELD_EHANDLE = 13,
+	FIELD_POSITION_VECTOR = 15
+}
+
+enum struct variant_t
+{
+	bool bValue;
+	int iValue;
+	float flValue;
+	char iszValue[256];
+	int rgbaValue[4];
+	float vecValue[3];
+	fieldtype_t fieldType;
+}
+
+/*
+char USE_TYPE[][] =
+{
+	"USE_OFF",
+	"USE_ON",
+	"USE_SET",
+	"USE_TOG"
+};
+// */
 
 
 
@@ -340,25 +372,65 @@ public void OnEntityCreated(int entity, const char[] classname)
 public MRESReturn AcceptInput(int pThis, Handle hReturn, Handle hParams)
 {
 	// Get args
-	static char param[128];
+	static char result[128];
 	static char command[128];
 	DHookGetParamString(hParams, 1, command, sizeof(command));
 
-	int type = DHookGetParamObjectPtrVar(hParams, 4, 16, ObjectValueType_Int);
+	variant_t params;
+	params.fieldType = view_as<fieldtype_t>(DHookGetParamObjectPtrVar(hParams, 4, 16, ObjectValueType_Int));
 
-	if( type == 5 )
+	switch (params.fieldType)
 	{
-		int t = DHookGetParamObjectPtrVar(hParams, 4, 0, ObjectValueType_Int);
-		IntToString(t, param, sizeof(param));
-	}
-	else if( type == 9 )
-	{
-		int color = DHookGetParamObjectPtrVar(hParams, 4, 0, ObjectValueType_Int);
-		Format(param, sizeof(param), "%d %d %d %d", color & 0xFF, (color >> 8 ) & 0xFF, (color >> 16) & 0xFF, (color >> 24) & 0xFF);
-	}
-	else
-	{
-		DHookGetParamObjectPtrString(hParams, 4, 0, ObjectValueType_String, param, sizeof(param));
+		case FIELD_FLOAT:
+		{
+			params.flValue = DHookGetParamObjectPtrVar(hParams, 4, 0, ObjectValueType_Float);
+			FloatToString(params.flValue, result, sizeof(result));
+		}
+
+		case FIELD_STRING:
+		{
+			DHookGetParamObjectPtrString(hParams, 4, 0, ObjectValueType_String, result, sizeof(result));
+		}
+
+		case FIELD_VECTOR, FIELD_POSITION_VECTOR:
+		{
+			DHookGetParamObjectPtrVarVector(hParams, 4, 0, ObjectValueType_Vector, params.vecValue);
+			Format(result, sizeof(result), "%f, %f, %f", params.vecValue[0], params.vecValue[1], params.vecValue[2]);
+		}
+
+		case FIELD_INTEGER, FIELD_SHORT, FIELD_CHARACTER:
+		{
+			params.iValue = DHookGetParamObjectPtrVar(hParams, 4, 0, ObjectValueType_Int);
+			IntToString(params.iValue, result, sizeof(result));
+		}
+
+		case FIELD_BOOLEAN:
+		{
+			params.bValue = DHookGetParamObjectPtrVar(hParams, 4, 0, ObjectValueType_Bool);
+			IntToString(params.bValue, result, sizeof(result));
+		}
+
+		case FIELD_COLOR32:
+		{
+			int color = DHookGetParamObjectPtrVar(hParams, 4, 0, ObjectValueType_Int);
+			params.rgbaValue[0] = color & 0xFF;
+			params.rgbaValue[1] = (color >> 8) & 0xFF;
+			params.rgbaValue[2] = (color >> 16) & 0xFF;
+			params.rgbaValue[3] = (color >> 24) & 0xFF;
+
+			Format(result, sizeof(result), "%d %d %d %d", params.rgbaValue[0], params.rgbaValue[1], params.rgbaValue[2], params.rgbaValue[3]);
+		}
+
+		case FIELD_CLASSPTR, FIELD_EHANDLE:
+		{
+			params.iValue = DHookGetParamObjectPtrVar(hParams, 4, 0, ObjectValueType_Ehandle);
+			IntToString(params.iValue, result, sizeof(result));
+		}
+
+		default:
+		{
+			Format(result, sizeof(result), "Unknown type: %d", params.fieldType);
+		}
 	}
 
 	static char classname[LEN_CLASS];
@@ -404,13 +476,13 @@ public MRESReturn AcceptInput(int pThis, Handle hReturn, Handle hParams)
 			{
 				if( IsClientInGame(i) )
 				{
-					PrintToChat(i, "\x01Ent %4d \x04%20s \x01Cmd \x05%20s. \x01Name \"\x03%45s\" \x01Param \x03%12s. \x01Act \x01%4d \x04%s", pThis, classname, command, sName, param, entity, activator);
+					PrintToChat(i, "\x01Ent %4d \x04%20s \x01Cmd \x05%20s. \x01Name \"\x03%45s\" \x01Param \x03%12s. \x01Act \x01%4d \x04%s", pThis, classname, command, sName, result, entity, activator);
 				}
 				else
 					g_bWatch[i] = false;
 			}
 			else
-				PrintToServer("%4d %s. (%s). \"%s\" (%s). %d %s", pThis, classname, command, sName, param, entity, activator);
+				PrintToServer("%4d %s. (%s). \"%s\" (%s). %d %s", pThis, classname, command, sName, result, entity, activator);
 		}
 	}
 
@@ -425,7 +497,7 @@ public MRESReturn AcceptInput(int pThis, Handle hReturn, Handle hParams)
 
 		char temp[16];
 		FormatTime(temp, sizeof(temp), "%H:%M:%S", GetTime());
-		WriteFileLine(g_hLogFile, "%s Ent %4d %16s Cmd %20s. Name \"%45s\" Param %12s. Act %4d %s", temp, pThis, classname, command, sName, param, entity, activator);
+		WriteFileLine(g_hLogFile, "%s Ent %4d %16s Cmd %20s. Name \"%45s\" Param %12s. Act %4d %s", temp, pThis, classname, command, sName, result, entity, activator);
 		FlushFile(g_hLogFile);
 	}
 
