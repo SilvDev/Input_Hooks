@@ -18,7 +18,7 @@
 
 
 
-#define PLUGIN_VERSION 		"1.8"
+#define PLUGIN_VERSION 		"1.9"
 
 /*=======================================================================================
 	Plugin Info:
@@ -31,6 +31,10 @@
 
 ========================================================================================
 	Change Log:
+
+1.9 (15-Jun-2022)
+	- Changed some white spacing sizes when printing.
+	- Removed quotes when printing various information, for a cleaner look.
 
 1.8 (29-Apr-2022)
 	- Added support for various types. Thanks to "Ilusion9" for coding.
@@ -197,7 +201,7 @@ public void OnPluginStart()
 // ====================================================================================================
 // CVARS
 // ====================================================================================================
-public void ConVarChanged_Cvars(Handle convar, const char[] oldValue, const char[] newValue)
+void ConVarChanged_Cvars(Handle convar, const char[] oldValue, const char[] newValue)
 {
 	GetCvars();
 
@@ -253,7 +257,7 @@ void GetCvars()
 // ====================================================================================================
 // COMMANDS
 // ====================================================================================================
-public Action CmdListen(int client, int args)
+Action CmdListen(int client, int args)
 {
 	g_bWatch[client] = true;
 	g_iListenInput = 1;
@@ -262,7 +266,7 @@ public Action CmdListen(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action CmdStop(int client, int args)
+Action CmdStop(int client, int args)
 {
 	g_aWatch.Clear();
 	g_bWatch[client] = false;
@@ -272,7 +276,7 @@ public Action CmdStop(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action CmdWatch(int client, int args)
+Action CmdWatch(int client, int args)
 {
 	if( args != 1 )
 	{
@@ -369,7 +373,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 	g_iHookID[entity] = DHookEntity(gAcceptInput, false, entity);
 }
 
-public MRESReturn AcceptInput(int pThis, Handle hReturn, Handle hParams)
+MRESReturn AcceptInput(int pThis, Handle hReturn, Handle hParams)
 {
 	// Get args
 	static char result[128];
@@ -476,13 +480,13 @@ public MRESReturn AcceptInput(int pThis, Handle hReturn, Handle hParams)
 			{
 				if( IsClientInGame(i) )
 				{
-					PrintToChat(i, "\x01Ent %4d \x04%20s \x01Cmd \x05%20s. \x01Name \"\x03%45s\" \x01Param \x03%12s. \x01Act \x01%4d \x04%s", pThis, classname, command, sName, result, entity, activator);
+					PrintToChat(i, "\x01Ent %4d \x04%36s \x01Cmd \x05%20s \x01Name \x03%45s \x01Param \x03%12s \x01Act \x01%4d \x04%s", pThis, classname, command, sName, result, entity, activator);
 				}
 				else
 					g_bWatch[i] = false;
 			}
 			else
-				PrintToServer("%4d %s. (%s). \"%s\" (%s). %d %s", pThis, classname, command, sName, result, entity, activator);
+				PrintToServer("%4d %s. (%s). %s (%s). %d %s", pThis, classname, command, sName, result, entity, activator);
 		}
 	}
 
@@ -497,7 +501,7 @@ public MRESReturn AcceptInput(int pThis, Handle hReturn, Handle hParams)
 
 		char temp[16];
 		FormatTime(temp, sizeof(temp), "%H:%M:%S", GetTime());
-		WriteFileLine(g_hLogFile, "%s Ent %4d %16s Cmd %20s. Name \"%45s\" Param %12s. Act %4d %s", temp, pThis, classname, command, sName, result, entity, activator);
+		WriteFileLine(g_hLogFile, "%s Ent %4d %16s Cmd %36s Name %45s Param %12s Act %4d %s", temp, pThis, classname, command, sName, result, entity, activator);
 		FlushFile(g_hLogFile);
 	}
 
